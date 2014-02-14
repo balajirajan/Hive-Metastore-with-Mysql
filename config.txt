@@ -1,0 +1,94 @@
+1. If Hive cluster is not ready, set it up based on the provider you follows such as, cloudera, apache, Hortonworks.
+
+
+2. Install mysql server on any one of the box in hive cluster.
+
+yum install mysql-server
+
+
+3. Add mysql connector
+
+Download  mysql-connector-java-5.0.5.jar, and copy it to the $HIVE_HOME/lib folder.
+
+yum install mysql-connector-java
+
+ln -s /usr/share/java/mysql-connector-java.jar /usr/lib/hive/lib/mysql-connector-java.jar
+
+
+3. Create database schema.
+
+Create the initial database schema using the hive-schema-0.10.0.mysql.sql file located in the/usr/lib/hive/scripts/metastore/upgrade/mysql directory.
+
+$ mysql -u root -p
+
+Enter password:
+
+mysql> CREATE DATABASE metastore;
+
+mysql> USE metastore;
+
+mysql> SOURCE /usr/lib/hive/scripts/metastore/upgrade/mysql/hive-schema-0.10.0.mysql.sql;
+
+
+3. Create database username and password.
+
+You also need a MySQL user account for Hive to use to access the metastore. I
+
+mysql> CREATE USER 'hive'@'metastorehost' IDENTIFIED BY 'mypassword';
+
+mysql> REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'hive'@'metastorehost';
+
+mysql> GRANT SELECT,INSERT,UPDATE,DELETE,LOCK TABLES,EXECUTE ON metastore.* TO 'hive'@'metastorehost';
+
+mysql> FLUSH PRIVILEGES;
+
+mysql> quit;
+
+
+4.  Configure the Metastore Service to Communicate with the MySQL Database
+
+This step shows the configuration properties you need to set in hive-site.xml to configure the metastore service to communicate with the MySQL database, and provides sample settings. Though you can use the same hive-site.xml on all hosts (client, metastore, HiveServer),hive.metastore.uris is the only property that must be configured on all of them; the others are used only on the metastore host.
+
+Given a MySQL database running on myhost and the user account hive with the password mypassword, set the configuration as follows 
+
+
+<property>
+  <name>javax.jdo.option.ConnectionURL</name>
+  <value>jdbc:mysql://myhost/metastore</value>
+  <description>the URL of the MySQL database</description>
+</property>
+
+<property>
+  <name>javax.jdo.option.ConnectionDriverName</name>
+  <value>com.mysql.jdbc.Driver</value>
+</property>
+
+<property>
+  <name>javax.jdo.option.ConnectionUserName</name>
+  <value>hive</value>
+</property>
+
+<property>
+  <name>javax.jdo.option.ConnectionPassword</name>
+  <value>mypassword</value>
+</property>
+
+<property>
+  <name>datanucleus.autoCreateSchema</name>
+  <value>false</value>
+</property>
+
+<property>
+  <name>datanucleus.fixedDatastore</name>
+  <value>true</value>
+</property>
+
+<property>
+  <name>hive.metastore.uris</name>
+  <value>thrift://<n.n.n.n>:9083</value>
+  <description>IP address (or fully-qualified domain name) and port of the metastore host</description>
+</property>
+
+
+Thats all, you are set to use hive metastore db as mysql. and multiple users can query simultaneously.
+
